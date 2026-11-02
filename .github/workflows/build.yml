@@ -29,7 +29,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          git clone --recursive --depth 1 https://github.com/theos/theos.git ~/theos
+          git clone --recursive --depth 1 "https://github.com" ~/theos
 
       - name: Download iOS 16 SDK
         shell: bash
@@ -38,7 +38,7 @@ jobs:
           mkdir -p ~/theos/sdks
           cd ~/theos/sdks
           git init
-          git remote add origin https://github.com/xybp888/iOS-SDKs.git
+          git remote add origin "https://github.com"
           git config core.sparseCheckout true
           echo "iPhoneOS16.5.sdk/*" > .git/info/sparse-checkout
           git pull --depth 1 origin master
@@ -56,11 +56,10 @@ jobs:
           set -euo pipefail
           export THEOS=~/theos
           
-          export TARGET=iphone:clang:16.5:15.0
-          export ARCHS="arm64 arm64e"
-          
           make clean
-          make FINALPACKAGE=1
+          
+          # حقن معايير البناء الصارمة لـ iOS 15 مباشرة داخل أمر make
+          make FINALPACKAGE=1 ARCHS="arm64 arm64e" TARGET="iphone:clang:16.5:15.0"
 
           echo "=== Theos dylib outputs ==="
           find .theos -type f -name '*.dylib' -print 2>/dev/null || true

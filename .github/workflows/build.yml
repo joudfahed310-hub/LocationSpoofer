@@ -29,7 +29,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          git clone --recursive --depth 1 https://github.com ~/theos
+          git clone --recursive --depth 1 https://github.com/theos/theos.git ~/theos
 
       - name: Download iOS 16 SDK
         shell: bash
@@ -38,7 +38,7 @@ jobs:
           mkdir -p ~/theos/sdks
           cd ~/theos/sdks
           git init
-          git remote add origin https://github.com
+          git remote add origin https://github.com/xybp888/iOS-SDKs.git
           git config core.sparseCheckout true
           echo "iPhoneOS16.5.sdk/*" > .git/info/sparse-checkout
           git pull --depth 1 origin master
@@ -75,7 +75,6 @@ jobs:
           rm -rf build-artifacts
           mkdir -p build-artifacts
 
-          # استخدام أمر مخصص لتفادي مشاكل الاسم الخاطئ الناتجة عن الرموز المائلة
           find .theos -type f -name '*.dylib' -exec cp -f {} build-artifacts/ \;
           
           if [ -d packages ]; then

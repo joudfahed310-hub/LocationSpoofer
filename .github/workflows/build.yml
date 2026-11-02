@@ -11,27 +11,25 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v6
 
-      - name: Prepare Project Structure
+      - name: Prepare Clean Root Environment
         shell: bash
         run: |
           set -e
-          mkdir -p Source
-          find . -maxdepth 1 -type f \( -name '*.m' -o -name '*.h' \) -exec mv -f {} Source/ \;
-
-          if [ -f Source/XsGpS.m ]; then
-            rm -f Source/LocationSpoofer.m Source/LocationSpoofer.h
+          echo "Current directory files:"
+          ls -lah
+          
+          if [ -f Makefile ]; then
+            sed -i '' '/ARCHS/d' Makefile || true
+            sed -i '' '/TARGET/d' Makefile || true
           fi
 
-          echo "Source files:"
-          find Source -maxdepth 1 -type f | sort
-
-      - name: Clone Theos
+      - name: Clone Theos Suite
         shell: bash
         run: |
           set -e
           git clone --recursive --depth 1 https://github.com/theos/theos.git ~/theos
 
-      - name: Download iOS 16 SDK
+      - name: Download iOS 16 SDK Package
         shell: bash
         run: |
           set -e
@@ -43,26 +41,29 @@ jobs:
           echo "iPhoneOS16.5.sdk/*" > .git/info/sparse-checkout
           git pull --depth 1 origin master
 
-      - name: Install ldid
+      - name: Install Signature Tools (ldid)
         shell: bash
         run: |
           set -e
           brew untap aws/tap >/dev/null 2>&1 || true
           HOMEBREW_NO_AUTO_UPDATE=1 brew install ldid
 
-      - name: Compile dylib
+      - name: Force iOS Compilation from Root
         shell: bash
         run: |
           set -euo pipefail
           export THEOS=~/theos
           
+          export TARGET=iphone:clang:16.5:15.0
+          export ARCHS="arm64 arm64e"
+          
           make clean
           make FINALPACKAGE=1 ARCHS="arm64 arm64e" TARGET=iphone:clang:16.5:15.0
 
-          echo "=== Theos dylib outputs ==="
-          find .theos -type f -name '*.dylib' -print 2>/dev/null || true
+          echo "=== Verification of Built Binaries ==="
+          find .theos -type f -name '*.dylib' -exec file {} \;
 
-      - name: Collect build products
+      - name: Safely Collect Artifacts
         shell: bash
         run: |
           set -euo pipefail
@@ -75,10 +76,10 @@ jobs:
             find packages -type f -name '*.deb' -exec cp -f {} build-artifacts/ \;
           fi
 
-          echo "=== Files that will be uploaded ==="
+          echo "Artifacts ready for deployment:"
           ls -lah build-artifacts
 
-      - name: Upload build products
+      - name: Upload Verified Release Products
         uses: actions/upload-artifact@v6
         with:
           name: XsGpS-build

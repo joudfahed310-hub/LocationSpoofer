@@ -32,7 +32,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          git clone --recursive --depth 1 https://github.com ~/theos
+          git clone --recursive --depth 1 https://github.com/theos/theos.git ~/theos
 
       - name: Download iOS 16 SDK
         shell: bash
@@ -41,7 +41,7 @@ jobs:
           mkdir -p ~/theos/sdks
           cd ~/theos/sdks
           git init
-          git remote add origin https://github.com
+          git remote add origin https://github.com/xybp888/iOS-SDKs.git
           git config core.sparseCheckout true
           echo "iPhoneOS16.5.sdk/*" > .git/info/sparse-checkout
           git pull --depth 1 origin master
@@ -61,10 +61,10 @@ jobs:
           set -euo pipefail
           export THEOS=~/theos
           
-          # توجيه البناء لنظام iOS والحد الأدنى للإصدار هو 15.0 باستخدام الـ SDK المتاح
+          # ØªÙØ¬ÙÙ Ø§ÙØ¨ÙØ§Ø¡ ÙÙØ¸Ø§Ù iOS ÙØ§ÙØ­Ø¯ Ø§ÙØ£Ø¯ÙÙ ÙÙØ¥ØµØ¯Ø§Ø± ÙÙ 15.0 Ø¨Ø§Ø³ØªØ®Ø¯Ø§Ù Ø§ÙÙ SDK Ø§ÙÙØªØ§Ø­
           export TARGET=iphone:clang:16.5:15.0
           
-          # دعم معمارية الأجهزة الحديثة بالكامل (A12+ وما قبلها)
+          # Ø¯Ø¹Ù ÙØ¹ÙØ§Ø±ÙØ© Ø§ÙØ£Ø¬ÙØ²Ø© Ø§ÙØ­Ø¯ÙØ«Ø© Ø¨Ø§ÙÙØ§ÙÙ (A12+ ÙÙØ§ ÙØ¨ÙÙØ§)
           export ARCHS="arm64 arm64e"
           
           make clean
@@ -86,13 +86,13 @@ jobs:
           found=0
 
           while IFS= read -r -d '' file; do
-            cp -f "$file" "build-artifacts/$(basename "$file")"
+            cp -f "$file" "build-artifacts/\$(basename "\$file")"
             found=1
           done < <(find .theos -type f -name '*.dylib' -print0 2>/dev/null)
 
           if [ -d packages ]; then
             while IFS= read -r -d '' file; do
-              cp -f "$file" "build-artifacts/$(basename "$file")"
+              cp -f "$file" "build-artifacts/\$(basename "\$file")"
               found=1
             done < <(find packages -type f -name '*.deb' -print0 2>/dev/null)
           fi

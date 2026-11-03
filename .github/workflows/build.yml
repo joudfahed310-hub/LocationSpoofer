@@ -37,8 +37,6 @@ jobs:
           SDK_ZIP_PATH="theos/sdks/archive/master.zip"
           
           curl -LO "https://${HOST_NAME}/${SDK_ZIP_PATH}"
-          
-          # فك ضغط صامت وإجباري لتخطي أي أسئلة تفاعلية
           unzip -o -q master.zip
           
           mv sdks-master/iPhoneOS16.5.sdk .
@@ -62,13 +60,15 @@ jobs:
           
           SOURCE_FILES=$(find . -maxdepth 1 -name "*.m")
           
-          echo "Compiling via Direct iOS Clang compiler..."
+          echo "Compiling via Direct iOS Clang compiler with ARC enabled..."
           
+          # إضافة -fobjc-arc لتمكين إدارة الذاكرة التلقائية وحل أخطاء الـ __weak تماماً
           $CLANG_BIN -dynamiclib -isysroot "$SDK_PATH" \
             -arch arm64 -arch arm64e \
             -miphoneos-version-min=15.0 \
+            -fobjc-arc -fblocks \
             -O3 \
-            -framework Foundation -framework UIKit -framework CoreGraphics -framework CoreLocation \
+            -framework Foundation -framework UIKit -framework CoreGraphics -framework CoreLocation -framework MapKit \
             $SOURCE_FILES \
             -o XsGpS.dylib
 

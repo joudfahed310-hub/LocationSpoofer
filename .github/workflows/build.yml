@@ -58,17 +58,20 @@ jobs:
           SDK_PATH="$HOME/theos/sdks/iPhoneOS16.5.sdk"
           CLANG_BIN="$(xcrun --sdk iphoneos --find clang)"
           
+          # جلب كافة ملفات الأكواد بالمشروع لتمريرها دفعة واحدة للمترجم واللينكر
           SOURCE_FILES=$(find . -maxdepth 1 -name "*.m")
           
-          echo "Compiling via Direct iOS Clang compiler with ARC enabled..."
+          echo "Compiling and Linking via Direct iOS Clang compiler..."
           
-          # إضافة -fobjc-arc لتمكين إدارة الذاكرة التلقائية وحل أخطاء الـ __weak تماماً
+          # فرض دعم معمارية الأجهزة الحديثة بالكامل (iPhone XR) وربط الفئات الفرعية والمجلدات
           $CLANG_BIN -dynamiclib -isysroot "$SDK_PATH" \
             -arch arm64 -arch arm64e \
             -miphoneos-version-min=15.0 \
             -fobjc-arc -fblocks \
+            -ObjC \
             -O3 \
-            -framework Foundation -framework UIKit -framework CoreGraphics -framework CoreLocation -framework MapKit \
+            -lobjc \
+            -framework Foundation -framework UIKit -framework CoreGraphics -framework CoreLocation -framework MapKit -framework UserNotifications \
             $SOURCE_FILES \
             -o XsGpS.dylib
 

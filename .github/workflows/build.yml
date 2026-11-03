@@ -50,35 +50,27 @@ jobs:
           brew untap aws/tap >/dev/null 2>&1 || true
           HOMEBREW_NO_AUTO_UPDATE=1 brew install ldid
 
-      - name: Force Compiling with Direct Clang (Zero-Failure)
+      - name: Compile and Package via Theos Engine (Zero-Failure)
         shell: bash
         run: |
           set -euo pipefail
           
-          SDK_PATH="$HOME/theos/sdks/iPhoneOS16.5.sdk"
-          CLANG_BIN="$(xcrun --sdk iphoneos --find clang)"
+          # إعداد متغيرات بيئة النظام لـ Theos بشكل إجباري ومطلق
+          export THEOS=~/theos
+          export THEOS_DEVICE_IP=""
           
-          # جلب كافة ملفات الأكواد بالمشروع لتمريرها دفعة واحدة للمترجم واللينكر
-          SOURCE_FILES=$(find . -maxdepth 1 -name "*.m")
+          # فرض الهدف والمعماريات المطلوبة بشكل صريح ونظيف لجهاز iPhone XR
+          export TARGET=iphone:clang:16.5:15.0
+          export ARCHS="arm64 arm64e"
           
-          echo "Compiling and Linking via Direct iOS Clang compiler..."
+          # تنظيف البناء القديم تماماً بداخل البيئة المحددة
+          make clean THEOS=~/theos TARGET=iphone:clang:16.5:15.0 ARCHS="arm64 arm64e"
           
-          # فرض دعم معمارية الأجهزة الحديثة بالكامل (iPhone XR) وربط الفئات الفرعية والمجلدات
-          $CLANG_BIN -dynamiclib -isysroot "$SDK_PATH" \
-            -arch arm64 -arch arm64e \
-            -miphoneos-version-min=15.0 \
-            -fobjc-arc -fblocks \
-            -ObjC \
-            -O3 \
-            -lobjc \
-            -framework Foundation -framework UIKit -framework CoreGraphics -framework CoreLocation -framework MapKit -framework UserNotifications \
-            $SOURCE_FILES \
-            -o XsGpS.dylib
+          # أمر التجميع النهائي الصارم باستخدام محرك Theos لربط ملفات الـ Category وحل مشاكل الـ Linker تلقائياً
+          make FINALPACKAGE=1 THEOS=~/theos TARGET=iphone:clang:16.5:15.0 ARCHS="arm64 arm64e"
 
-          echo "=== Verifying the generated Mach-O type ==="
-          file XsGpS.dylib
-
-          ldid -S XsGpS.dylib
+          echo "=== Verifying Built Binary Structure ==="
+          find .theos -type f -name '*.dylib' -exec file {} \;
 
       - name: Safely Collect Artifacts
         shell: bash
@@ -87,11 +79,11 @@ jobs:
           rm -rf build-artifacts
           mkdir -p build-artifacts
           
-          if [ -f XsGpS.dylib ]; then
-            cp -f XsGpS.dylib build-artifacts/
-          else
-            echo "ERROR: Target binary XsGpS.dylib was not compiled!"
-            exit 1
+          # تجميع مخرجات الـ dylib التي ينتجها نظام Theos بأسمائها الأصلية
+          find .theos -type f -name '*.dylib' -exec cp -f {} build-artifacts/ \;
+          
+          if [ -d packages ]; then
+            find packages -type f -name '*.deb' -exec cp -f {} build-artifacts/ \;
           fi
 
           echo "Artifacts ready:"

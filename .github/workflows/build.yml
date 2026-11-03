@@ -11,35 +11,38 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v6
 
-      - name: Prepare Clean Root Environment
+      - name: Clean Environment
         shell: bash
         run: |
           set -e
-          echo "Current directory files:"
-          ls -lah
-          
-          if [ -f Makefile ]; then
-            sed -i '' '/ARCHS/d' Makefile || true
-            sed -i '' '/TARGET/d' Makefile || true
-          fi
+          echo "Cleaning old builds..."
+          rm -rf .theos build-artifacts packages
 
       - name: Clone Theos Suite
         shell: bash
         run: |
           set -e
-          git clone --recursive --depth 1 https://github.com ~/theos
+          # تقسيم مسار الرابط لمنع خوارزمية الدردشة من حذفه أو اختصاره
+          HOST_NAME="github.com"
+          THEOS_PATH="theos/theos.git"
+          git clone --recursive --depth 1 "https://${HOST_NAME}/${THEOS_PATH}" ~/theos
 
-      - name: Download iOS 16 SDK Package
+      - name: Fast Download iOS 16 SDK
         shell: bash
         run: |
           set -e
           mkdir -p ~/theos/sdks
           cd ~/theos/sdks
-          git init
-          git remote add origin https://github.com
-          git config core.sparseCheckout true
-          echo "iPhoneOS16.5.sdk/*" > .git/info/sparse-checkout
-          git pull --depth 1 origin master
+          
+          # تقسيم رابط تحميل الحزمة السريع لضمان وصوله كاملاً ومكتدماً
+          HOST_NAME="github.com"
+          SDK_ZIP_PATH="xybp888/iOS-SDKs/archive/refs/heads/master.zip"
+          
+          curl -LO "https://${HOST_NAME}/${SDK_ZIP_PATH}"
+          unzip -q master.zip
+          mv iOS-SDKs-master/iPhoneOS16.5.sdk .
+          rm -rf master.zip iOS-SDKs-master
+          echo "SDK Downloaded and extracted successfully."
 
       - name: Install Signature Tools (ldid)
         shell: bash
@@ -48,20 +51,32 @@ jobs:
           brew untap aws/tap >/dev/null 2>&1 || true
           HOMEBREW_NO_AUTO_UPDATE=1 brew install ldid
 
-      - name: Force iOS Compilation from Root
+      - name: Force Compiling with Direct Clang (Zero-Failure)
         shell: bash
         run: |
           set -euo pipefail
-          export THEOS=~/theos
           
-          export TARGET=iphone:clang:16.5:15.0
-          export ARCHS="arm64 arm64e"
+          SDK_PATH="$HOME/theos/sdks/iPhoneOS16.5.sdk"
+          CLANG_BIN="$(xcrun --sdk iphoneos --find clang)"
           
-          make clean
-          make FINALPACKAGE=1 ARCHS="arm64 arm64e" TARGET=iphone:clang:16.5:15.0
+          # جلب كافة ملفات الأكواد المتواجدة في جذر المستودع للمترجم مباشرة
+          SOURCE_FILES=$(find . -maxdepth 1 -name "*.m")
+          
+          echo "Compiling via Direct iOS Clang compiler..."
+          
+          # البناء الفوري والمباشر لدعم معالجات أجهزة iPhone XR (arm64e) وإصدار iOS 15.0+
+          $CLANG_BIN -dynamiclib -isysroot "$SDK_PATH" \
+            -arch arm64 -arch arm64e \
+            -miphoneos-version-min=15.0 \
+            -O3 \
+            -framework Foundation -framework UIKit -framework CoreGraphics -framework CoreLocation \
+            $SOURCE_FILES \
+            -o XsGpS.dylib
 
-          echo "=== Verification of Built Binaries ==="
-          find .theos -type f -name '*.dylib' -exec file {} \;
+          echo "=== Verifying the generated Mach-O type ==="
+          file XsGpS.dylib
+
+          ldid -S XsGpS.dylib
 
       - name: Safely Collect Artifacts
         shell: bash
@@ -69,14 +84,16 @@ jobs:
           set -euo pipefail
           rm -rf build-artifacts
           mkdir -p build-artifacts
-
-          find .theos -type f -name '*.dylib' -exec cp -f {} build-artifacts/ \;
           
-          if [ -d packages ]; then
-            find packages -type f -name '*.deb' -exec cp -f {} build-artifacts/ \;
+          # نقل وتجميع ملف الـ dylib باسمه الأصلي الصحيح
+          if [ -f XsGpS.dylib ]; then
+            cp -f XsGpS.dylib build-artifacts/
+          else
+            echo "ERROR: Target binary XsGpS.dylib was not compiled!"
+            exit 1
           fi
 
-          echo "Artifacts ready for deployment:"
+          echo "Artifacts ready:"
           ls -lah build-artifacts
 
       - name: Upload Verified Release Products

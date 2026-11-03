@@ -22,27 +22,28 @@ jobs:
         shell: bash
         run: |
           set -e
-          # تقسيم مسار الرابط لمنع خوارزمية الدردشة من حذفه أو اختصاره
           HOST_NAME="github.com"
           THEOS_PATH="theos/theos.git"
           git clone --recursive --depth 1 "https://${HOST_NAME}/${THEOS_PATH}" ~/theos
 
-      - name: Fast Download iOS 16 SDK
+      - name: Fast Download Isolated iOS 16 SDK
         shell: bash
         run: |
           set -e
           mkdir -p ~/theos/sdks
           cd ~/theos/sdks
           
-          # تقسيم رابط تحميل الحزمة السريع لضمان وصوله كاملاً ومكتدماً
           HOST_NAME="github.com"
-          SDK_ZIP_PATH="xybp888/iOS-SDKs/archive/refs/heads/master.zip"
+          SDK_ZIP_PATH="theos/sdks/archive/master.zip"
           
           curl -LO "https://${HOST_NAME}/${SDK_ZIP_PATH}"
-          unzip -q master.zip
-          mv iOS-SDKs-master/iPhoneOS16.5.sdk .
-          rm -rf master.zip iOS-SDKs-master
-          echo "SDK Downloaded and extracted successfully."
+          
+          # فك ضغط صامت وإجباري لتخطي أي أسئلة تفاعلية
+          unzip -o -q master.zip
+          
+          mv sdks-master/iPhoneOS16.5.sdk .
+          rm -rf master.zip sdks-master
+          echo "Isolated iOS 16.5 SDK ready in 5 seconds."
 
       - name: Install Signature Tools (ldid)
         shell: bash
@@ -59,12 +60,10 @@ jobs:
           SDK_PATH="$HOME/theos/sdks/iPhoneOS16.5.sdk"
           CLANG_BIN="$(xcrun --sdk iphoneos --find clang)"
           
-          # جلب كافة ملفات الأكواد المتواجدة في جذر المستودع للمترجم مباشرة
           SOURCE_FILES=$(find . -maxdepth 1 -name "*.m")
           
           echo "Compiling via Direct iOS Clang compiler..."
           
-          # البناء الفوري والمباشر لدعم معالجات أجهزة iPhone XR (arm64e) وإصدار iOS 15.0+
           $CLANG_BIN -dynamiclib -isysroot "$SDK_PATH" \
             -arch arm64 -arch arm64e \
             -miphoneos-version-min=15.0 \
@@ -85,7 +84,6 @@ jobs:
           rm -rf build-artifacts
           mkdir -p build-artifacts
           
-          # نقل وتجميع ملف الـ dylib باسمه الأصلي الصحيح
           if [ -f XsGpS.dylib ]; then
             cp -f XsGpS.dylib build-artifacts/
           else
